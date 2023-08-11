@@ -40,6 +40,7 @@ func main() {
 }
 
 func writeJobs(jobs []extractedJob) {
+	jobC := make(chan error)
 	file, err := os.Create("jobs.csv")
 	checkErr(err)
 
@@ -52,10 +53,18 @@ func writeJobs(jobs []extractedJob) {
 	checkErr(wErr)
 
 	for _, job := range jobs {
-		jobSlice := []string{"https://www.saramin.co.kr/zf_user/jobs/relay/view?isMypage=no&rec_idx=" + job.id, job.title, job.location, job.condition, job.summary}
-		jwErr := w.Write(jobSlice)
-		checkErr(jwErr)
+		go writeJob(w, job, jobC)
 	}
+
+	for i := 0; i < len(jobs); i++ {
+		checkErr(<-jobC)
+	}
+}
+
+func writeJob(w *csv.Writer, job extractedJob, jobC chan<- error) {
+	jobSlice := []string{"https://www.saramin.co.kr/zf_user/jobs/relay/view?isMypage=no&rec_idx=" + job.id, job.title, job.location, job.condition, job.summary}
+	jwErr := w.Write(jobSlice)
+	jobC <- jwErr
 }
 
 func getPage(page int, mainC chan<- []extractedJob) {
