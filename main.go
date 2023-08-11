@@ -1,15 +1,15 @@
 package main
 
 import (
-	"encoding/csv"
 	"fmt"
 	"log"
 	"net/http"
-	"os"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/PuerkitoBio/goquery"
+	ccsv "github.com/tsak/concurrent-csv-writer"
 )
 
 type extractedJob struct {
@@ -23,6 +23,9 @@ type extractedJob struct {
 var baseURL string = "https://www.saramin.co.kr/zf_user/search/recruit?&searchword=python"
 
 func main() {
+	// 시작 시간
+	startTime := time.Now()
+
 	var jobs []extractedJob
 	c := make(chan []extractedJob)
 	totalPages := getPages()
@@ -35,36 +38,29 @@ func main() {
 		jobs = append(jobs, extractedJobs...)
 	}
 
-	writeJobs(jobs)
-	fmt.Println("Done, extracted", len(jobs))
+	writeJobswithGoRoutines(jobs)
+	fmt.Println("Done, extracted", time.Since(startTime))
 }
 
-func writeJobs(jobs []extractedJob) {
-	jobC := make(chan error)
-	file, err := os.Create("jobs.csv")
+func writeJobswithGoRoutines(jobs []extractedJob) {
+	csv, err := ccsv.NewCsvWriter("jobs.csv")
 	checkErr(err)
 
-	w := csv.NewWriter(file)
-	defer w.Flush()
+	defer csv.Close()
 
 	headers := []string{"Link", "Title", "Location", "Condition", "Summary"}
+	csv.Write(headers)
 
-	wErr := w.Write(headers)
-	checkErr(wErr)
-
+	done := make(chan bool)
 	for _, job := range jobs {
-		go writeJob(w, job, jobC)
+		go func(job extractedJob) {
+			csv.Write([]string{"https://www.saramin.co.kr/zf_user/jobs/relay/view?isMypage=no&rec_idx=" + job.id, job.title, job.location, job.condition, job.summary})
+			done <- true
+		}(job)
 	}
-
 	for i := 0; i < len(jobs); i++ {
-		checkErr(<-jobC)
+		<-done
 	}
-}
-
-func writeJob(w *csv.Writer, job extractedJob, jobC chan<- error) {
-	jobSlice := []string{"https://www.saramin.co.kr/zf_user/jobs/relay/view?isMypage=no&rec_idx=" + job.id, job.title, job.location, job.condition, job.summary}
-	jwErr := w.Write(jobSlice)
-	jobC <- jwErr
 }
 
 func getPage(page int, mainC chan<- []extractedJob) {
