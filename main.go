@@ -20,7 +20,7 @@ type extractedJob struct {
 	summary   string
 }
 
-var baseURL string = "https://www.saramin.co.kr/zf_user/search/recruit?&searchword=python"
+var baseURL string = "https://www.saramin.co.kr/zf_user/search?cat_kewd=84&company_cd=0%2C1%2C2%2C3%2C4%2C5%2C6%2C7%2C9%2C10&loc_mcd=101000&panel_type=&search_optional_item=y&search_done=y&panel_count=y&preview=y&recruitSort=relation&inner_com_type=&searchword=&show_applied=&quick_apply=&except_read=&ai_head_hunting=&mainSearch=n"
 
 func main() {
 	// 시작 시간
